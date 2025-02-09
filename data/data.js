@@ -22,8 +22,8 @@ export const data = [
   },
   {
     id: '4',
-    name: "Base Secrète de Bowser",
-    description: "La base secrète de Bowser, avec des pièges sournois et des ennemis redoutables.",
+    name: "Galeries Multicolores",
+    description: "Un lieu magique aux couleurs vives, offrant un parcours fascinant et surprenant.",
     boardView: require('../assets/map4.jpg'),
     boardIcon: require('../assets/iconmap4.png'),
   },
@@ -36,15 +36,15 @@ export const data = [
   },
   {
     id: '6',
-    name: "Galeries Multicolores",
-    description: "Un lieu magique aux couleurs vives, offrant un parcours fascinant et surprenant.",
+    name: "Château Arc-en-Ciel de Mario",
+    description: "Un château magique rempli de mystères et de couleurs éclatantes.",
     boardView: require('../assets/map6.jpg'),
     boardIcon: require('../assets/iconmap6.png'),
   },
   {
     id: '7',
-    name: "Château Arc-en-Ciel de Mario",
-    description: "Un château magique rempli de mystères et de couleurs éclatantes.",
+    name: "Base Secrète de Bowser",
+    description: "La base secrète de Bowser, avec des pièges sournois et des ennemis redoutables.",
     boardView: require('../assets/map7.jpg'),
     boardIcon: require('../assets/iconmap7.png'),
   }

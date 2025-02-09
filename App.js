@@ -4,16 +4,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { Audio } from 'expo-av';
 import { data } from './data/data.js';
+import * as Haptics from 'expo-haptics';
 
 export default function App() {
   const [isVisible, setIsVisible] = useState(true);
   const [selectedMap, setSelectedMap] = useState(null);
   const [borderColor, setBorderColor] = useState('#ffffff');
   const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionComplete, setSelectionComplete] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const rotationAnim = useRef(new Animated.Value(0)).current;
   const buttonSound = useRef(null);
   const backgroundMusic = useRef(null);
+  const searchSound = useRef(null);
+  const bounceAnim = useRef(new Animated.Value(1)).current;
 
   const borderColors = ['#ff5733', '#33ff57', '#3357ff', '#ff33a1', '#ffdd33'];
 
@@ -35,8 +39,17 @@ export default function App() {
       buttonSound.current = sound;
     }
 
+    async function loadSearchSound() {
+      const { sound } = await Audio.Sound.createAsync(
+        require('./music/random.mp3'),
+        { volume: 0.2 }
+      );
+      searchSound.current = sound;
+    }
+
     playMusic();
     loadButtonSound();
+    loadSearchSound();
 
     Animated.loop(
       Animated.timing(rotationAnim, {
@@ -54,8 +67,29 @@ export default function App() {
       if (backgroundMusic.current) {
         backgroundMusic.current.unloadAsync();
       }
+      if (searchSound.current) {
+        searchSound.current.unloadAsync();
+      }
     };
   }, []);
+
+  useEffect(() => {
+    if (selectionComplete) {
+      Animated.spring(bounceAnim, {
+        toValue: 1.2,
+        friction: 2,
+        tension: 160,
+        useNativeDriver: true,
+      }).start(() => {
+        Animated.spring(bounceAnim, {
+          toValue: 1,
+          friction: 2,
+          tension: 160,
+          useNativeDriver: true,
+        }).start(() => {});
+      });
+    }
+  }, [selectionComplete]);
 
   const handlePress = async () => {
     if (backgroundMusic.current) {
@@ -79,22 +113,45 @@ export default function App() {
   const startMapSelection = () => {
     if (isSelecting) return;
     setIsSelecting(true);
-    
-    let interval = 100;
+    setSelectionComplete(false);
+
+    if (backgroundMusic.current) {
+      backgroundMusic.current.setVolumeAsync(0.1);
+    }
+
+    if (searchSound.current) {
+      searchSound.current.playAsync();
+    }
+
+    let interval =550;
     let totalTime = 0;
-    let maxTime = 4000;
+    let maxTime = 9700;
 
     const intervalId = setInterval(() => {
       const randomIndex = Math.floor(Math.random() * data.length);
       setSelectedMap(data[randomIndex]);
       setBorderColor(borderColors[Math.floor(Math.random() * borderColors.length)]);
+
       totalTime += interval;
-      
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
       if (totalTime >= maxTime) {
         clearInterval(intervalId);
         setIsSelecting(false);
+        setSelectionComplete(true);
+
+        if (backgroundMusic.current) {
+          backgroundMusic.current.setVolumeAsync(0.3);
+        }
+
+        if (searchSound.current) {
+          searchSound.current.stopAsync();
+        }
+
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       } else {
-        interval += 50;
+        interval += 200;
       }
     }, interval);
   };
@@ -106,6 +163,8 @@ export default function App() {
 
   return (
     <LinearGradient colors={['#4facfe', '#00f2fe']} style={styles.wrapper}>
+      {selectedMap && selectionComplete && <Image source={selectedMap.boardView} blurRadius={10}
+        style={styles.backgroundImage} />}
       <Image source={require('./assets/nuages.png')} style={styles.cloud} />
 
       {isVisible ? (
@@ -118,8 +177,23 @@ export default function App() {
         </Animated.View>
       ) : (
         selectedMap && (
-          <View style={styles.selectedMapContainer}> 
-            <Image source={selectedMap.boardIcon} style={styles.selectedMapImage} />
+          <View style={styles.selectedMapContainer}>
+            {selectionComplete ? (
+              <>
+                <Text style={styles.mapTitle}>{selectedMap.name}</Text>
+                <Animated.Image
+                  source={selectedMap.boardIcon}
+                  resizeMode="contain"
+                  style={[styles.selectedMapImage, { transform: [{ scale: bounceAnim }] }]}
+
+                />
+                <Text style={styles.mapDescription}>{selectedMap.description}</Text>
+              </>
+            ) : (
+              <Image source={selectedMap.boardIcon}
+                resizeMode="contain"
+                style={styles.selectedMapImage} />
+            )}
           </View>
         )
       )}
@@ -136,6 +210,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  backgroundImage: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   container: {
     width: 320,
@@ -155,11 +235,17 @@ const styles = StyleSheet.create({
     height: 80,
   },
   button: {
-    marginTop: 40,
+    position: 'absolute',
+    bottom: 50,
     backgroundColor: '#ff9800',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    elevation: 5,
   },
   buttonText: {
     color: 'white',
@@ -172,7 +258,7 @@ const styles = StyleSheet.create({
     left: 10,
     width: 130,
     height: 110,
-    opacity: 0.6,
+    opacity: 0.7,
   },
   selectedMapContainer: {
     marginTop: 30,
@@ -181,7 +267,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   selectedMapImage: {
-    width: 150,
-    height: 150,
+    width: 200,
+    height: 200,
+    marginVertical: 10,
+  },
+  mapTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginTop: 0,
+    color: '#fff',
+  },
+  mapDescription: {
+    fontSize: 16,
+    color: '#fff',
+    textAlign: 'center',
+    marginHorizontal: 20,
+    fontWeight: 'bold',
   },
 });
